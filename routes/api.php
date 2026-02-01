@@ -42,7 +42,7 @@ Route::prefix('berita')->group(function () {
     Route::get('/latest', [BeritaController::class, 'latest']);
     Route::get('/{slug}', [BeritaController::class, 'show']);
     Route::post('/{slug}/like', [BeritaController::class, 'toggleLike']);
-    
+
     // Comments
     Route::get('/{berita}/comments', [\App\Http\Controllers\Api\BeritaCommentController::class, 'index'])->whereNumber('berita');
     Route::post('/{berita}/comments', [\App\Http\Controllers\Api\BeritaCommentController::class, 'store'])->whereNumber('berita');
@@ -102,7 +102,7 @@ Route::prefix('admin')->group(function () {
 // ADMIN ROUTES (Butuh Autentikasi)
 // =============================================
 Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
-    
+
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
@@ -153,7 +153,24 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
     // Route::apiResource('antrian', AntrianController::class)->middleware('permission:manage_antrian');
     // Route::apiResource('roles', RoleController::class)->middleware('permission:manage_roles');
 
+    // CRUD Imam
+    Route::apiResource('imam', \App\Http\Controllers\Api\Admin\ImamController::class);
+
+    // CRUD Khotib
+    Route::apiResource('khotib', \App\Http\Controllers\Api\Admin\KhotibController::class);
+
     // CRUD Users
     Route::apiResource('users', \App\Http\Controllers\Api\Admin\UserController::class);
     Route::get('users-roles', [\App\Http\Controllers\Api\Admin\UserController::class, 'roles']);
+
+    // Pendaftaran Nikah Management
+    Route::prefix('pendaftaran-nikah')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\Admin\PendaftaranNikahController::class, 'index']);
+        Route::get('/penghulus', [\App\Http\Controllers\Api\Admin\PendaftaranNikahController::class, 'penghulus']);
+        Route::get('/{id}', [\App\Http\Controllers\Api\Admin\PendaftaranNikahController::class, 'show']);
+        Route::put('/{id}/status', [\App\Http\Controllers\Api\Admin\PendaftaranNikahController::class, 'updateStatus']);
+        Route::put('/{id}/penghulu', [\App\Http\Controllers\Api\Admin\PendaftaranNikahController::class, 'assignPenghulu']);
+        Route::post('/{id}/jadwal', [\App\Http\Controllers\Api\Admin\PendaftaranNikahController::class, 'createJadwal']);
+        Route::put('/{id}/dokumen/{dokumenId}', [\App\Http\Controllers\Api\Admin\PendaftaranNikahController::class, 'updateDokumenStatus']);
+    });
 });

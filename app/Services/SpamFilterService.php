@@ -20,7 +20,7 @@ class SpamFilterService
         'rtp live', 'rtp slot', 'bocoran slot', 'pola slot', 'jam gacor',
         'maxwin', 'scatter hitam', 'scatter x500', 'gacor hari ini',
         'situs slot', 'link slot', 'daftar slot', 'login slot',
-        'pragmatic play', 'pg soft', 'habanero', 'spadegaming',
+        'pragmatic play', 'pg soft', 'habanero', 'spadegaming', 'gacor',
         
         // Common spam patterns
         'klik di sini', 'hubungi kami', 'wa.me/', 'bit.ly/', 't.me/',

@@ -26,7 +26,7 @@ class PendaftaranNikahController extends BaseController
             'no_hp_pria' => 'required|string|max:15',
             'pekerjaan_pria' => 'nullable|string|max:100',
             'status_pria' => 'required|in:jejaka,duda',
-            
+
             // Data Wanita
             'nama_wanita' => 'required|string|max:255',
             'nik_wanita' => 'required|string|size:16',
@@ -36,12 +36,12 @@ class PendaftaranNikahController extends BaseController
             'no_hp_wanita' => 'required|string|max:15',
             'pekerjaan_wanita' => 'nullable|string|max:100',
             'status_wanita' => 'required|in:perawan,janda',
-            
+
             // Data Wali
             'nama_wali' => 'required|string|max:255',
             'hubungan_wali' => 'required|string|max:100',
             'no_hp_wali' => 'nullable|string|max:15',
-            
+
             // Rencana Nikah
             'tanggal_nikah' => 'required|date|after:+10 days',
             'jam_nikah' => 'nullable|date_format:H:i',
@@ -59,7 +59,8 @@ class PendaftaranNikahController extends BaseController
         })->get();
 
         foreach ($admins as $admin) {
-            Notifikasi::notify($admin->id, 
+            Notifikasi::notify(
+                $admin->id,
                 'Pendaftaran Nikah Baru',
                 "Pendaftaran nikah baru dari {$pendaftaran->nama_pria} & {$pendaftaran->nama_wanita}",
                 [
@@ -92,12 +93,9 @@ class PendaftaranNikahController extends BaseController
 
         // Get dokumen status
         $dokumens = DokumenNikah::where('pendaftaran_id', $pendaftaran->id)
-            ->select(['jenis', 'status', 'catatan'])
+            ->select(['id', 'jenis', 'status', 'catatan', 'created_at'])
             ->get()
-            ->map(function ($doc) {
-                $doc->jenis_label = $doc->jenis_label;
-                return $doc;
-            });
+            ->each(fn($doc) => $doc->append('jenis_label'));
 
         return $this->successResponse([
             'pendaftaran' => $pendaftaran,

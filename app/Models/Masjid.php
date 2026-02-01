@@ -23,6 +23,10 @@ class Masjid extends Model
         'kapasitas',
         'foto',
         'keterangan',
+        'jadwal_imam',
+        'jadwal_imam_file',
+        'jadwal_khotib',
+        'jadwal_khotib_file',
         'is_active',
     ];
 

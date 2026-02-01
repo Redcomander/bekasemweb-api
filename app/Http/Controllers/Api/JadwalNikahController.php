@@ -12,8 +12,8 @@ class JadwalNikahController extends BaseController
      */
     public function index(Request $request)
     {
-        $query = JadwalNikah::with(['penghulu:id,name'])
-            ->select(['id', 'tanggal', 'jam_mulai', 'jam_selesai', 'lokasi', 'status', 'penghulu_id']);
+        $query = JadwalNikah::with(['penghulu:id,name', 'pendaftaran:id,nama_pria,nama_wanita'])
+            ->select(['id', 'tanggal', 'jam_mulai', 'jam_selesai', 'lokasi', 'status', 'penghulu_id', 'pendaftaran_id']);
 
         // Filter by date range
         if ($request->has('from')) {

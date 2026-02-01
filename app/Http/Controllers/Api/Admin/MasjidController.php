@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Api\BaseController;
 use App\Models\Masjid;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Facades\Image;
 
 class MasjidController extends BaseController
 {
@@ -13,7 +15,7 @@ class MasjidController extends BaseController
      */
     public function index(Request $request)
     {
-        $query = Masjid::with(['imams', 'khotibs']);
+        $query = Masjid::query();
 
         // Filter by tipe
         if ($request->has('tipe')) {
@@ -30,12 +32,12 @@ class MasjidController extends BaseController
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('alamat', 'like', "%{$search}%")
-                  ->orWhere('kelurahan', 'like', "%{$search}%");
+                    ->orWhere('alamat', 'like', "%{$search}%")
+                    ->orWhere('kelurahan', 'like', "%{$search}%");
             });
         }
 
-        $masjids = $query->paginate($request->per_page ?? 15);
+        $masjids = $query->orderBy('nama')->paginate($request->per_page ?? 50);
 
         return $this->paginatedResponse($masjids, 'Daftar masjid');
     }
@@ -57,28 +59,17 @@ class MasjidController extends BaseController
             'tahun_berdiri' => 'nullable|integer|min:1900|max:' . date('Y'),
             'kapasitas' => 'nullable|integer|min:0',
             'keterangan' => 'nullable|string',
-            'imam_ids' => 'nullable|array',
-            'imam_ids.*' => 'exists:imams,id',
-            'khotib_ids' => 'nullable|array',
-            'khotib_ids.*' => 'exists:khotibs,id',
+            'jadwal_imam' => 'nullable|string',
+            'jadwal_khotib' => 'nullable|string',
         ]);
 
         $masjid = Masjid::create($validated);
 
-        // Sync imams
-        if ($request->has('imam_ids')) {
-            $masjid->imams()->sync($request->imam_ids);
-        }
+        // Handle file uploads
+        $this->handleFileUpload($request, $masjid, 'jadwal_imam_file');
+        $this->handleFileUpload($request, $masjid, 'jadwal_khotib_file');
 
-        // Sync khotibs
-        if ($request->has('khotib_ids')) {
-            $masjid->khotibs()->sync($request->khotib_ids);
-        }
-
-        return $this->createdResponse(
-            $masjid->load(['imams', 'khotibs']),
-            'Masjid berhasil ditambahkan'
-        );
+        return $this->createdResponse($masjid->fresh(), 'Masjid berhasil ditambahkan');
     }
 
     /**
@@ -86,7 +77,6 @@ class MasjidController extends BaseController
      */
     public function show(Masjid $masjid)
     {
-        $masjid->load(['imams', 'khotibs']);
         return $this->successResponse($masjid, 'Detail masjid');
     }
 
@@ -107,29 +97,26 @@ class MasjidController extends BaseController
             'tahun_berdiri' => 'nullable|integer|min:1900|max:' . date('Y'),
             'kapasitas' => 'nullable|integer|min:0',
             'keterangan' => 'nullable|string',
+            'jadwal_imam' => 'nullable|string',
+            'jadwal_khotib' => 'nullable|string',
             'is_active' => 'boolean',
-            'imam_ids' => 'nullable|array',
-            'imam_ids.*' => 'exists:imams,id',
-            'khotib_ids' => 'nullable|array',
-            'khotib_ids.*' => 'exists:khotibs,id',
         ]);
 
         $masjid->update($validated);
 
-        // Sync imams if provided
-        if ($request->has('imam_ids')) {
-            $masjid->imams()->sync($request->imam_ids);
+        // Handle file uploads
+        $this->handleFileUpload($request, $masjid, 'jadwal_imam_file');
+        $this->handleFileUpload($request, $masjid, 'jadwal_khotib_file');
+
+        // Handle file deletions
+        if ($request->boolean('delete_jadwal_imam_file')) {
+            $this->deleteFile($masjid, 'jadwal_imam_file');
+        }
+        if ($request->boolean('delete_jadwal_khotib_file')) {
+            $this->deleteFile($masjid, 'jadwal_khotib_file');
         }
 
-        // Sync khotibs if provided
-        if ($request->has('khotib_ids')) {
-            $masjid->khotibs()->sync($request->khotib_ids);
-        }
-
-        return $this->successResponse(
-            $masjid->fresh()->load(['imams', 'khotibs']),
-            'Masjid berhasil diupdate'
-        );
+        return $this->successResponse($masjid->fresh(), 'Masjid berhasil diupdate');
     }
 
     /**
@@ -137,7 +124,66 @@ class MasjidController extends BaseController
      */
     public function destroy(Masjid $masjid)
     {
+        // Delete associated files
+        $this->deleteFile($masjid, 'jadwal_imam_file');
+        $this->deleteFile($masjid, 'jadwal_khotib_file');
+
         $masjid->delete();
         return $this->successResponse(null, 'Masjid berhasil dihapus');
+    }
+
+    /**
+     * Handle file upload with compression for images
+     */
+    private function handleFileUpload(Request $request, Masjid $masjid, string $field): void
+    {
+        if (!$request->hasFile($field)) {
+            return;
+        }
+
+        $file = $request->file($field);
+        $extension = strtolower($file->getClientOriginalExtension());
+        $filename = 'masjid_' . $masjid->id . '_' . $field . '_' . time() . '.' . $extension;
+        $path = 'masjid/' . $filename;
+
+        // Delete old file if exists
+        if ($masjid->{$field}) {
+            Storage::disk('public')->delete($masjid->{$field});
+        }
+
+        // Check if it's an image that can be compressed
+        $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+
+        if (in_array($extension, $imageExtensions)) {
+            // Compress image using Intervention Image
+            $image = Image::make($file);
+
+            // Resize if too large (max 1920px width)
+            if ($image->width() > 1920) {
+                $image->resize(1920, null, function ($constraint) {
+                    $constraint->aspectRatio();
+                    $constraint->upsize();
+                });
+            }
+
+            // Save with compression (quality 80%)
+            $image->save(storage_path('app/public/' . $path), 80);
+        } else {
+            // For PDFs and other files, store directly
+            $file->storeAs('masjid', $filename, 'public');
+        }
+
+        $masjid->update([$field => $path]);
+    }
+
+    /**
+     * Delete a file from storage
+     */
+    private function deleteFile(Masjid $masjid, string $field): void
+    {
+        if ($masjid->{$field}) {
+            Storage::disk('public')->delete($masjid->{$field});
+            $masjid->update([$field => null]);
+        }
     }
 }
