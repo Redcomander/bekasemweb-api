@@ -94,6 +94,7 @@ class PendaftaranNikahController extends BaseController
             return $this->notFoundResponse('Pendaftaran tidak ditemukan');
         }
 
+        $oldStatus = $pendaftaran->status;
         $pendaftaran->update([
             'status' => $request->status,
             'catatan_admin' => $request->catatan,
@@ -101,8 +102,29 @@ class PendaftaranNikahController extends BaseController
             'verified_at' => now(),
         ]);
 
-        // Create notification for status change (could notify via SMS/email in future)
-        // For now, just log
+        // Notify all admins about status change
+        $statusLabels = [
+            'verifikasi' => 'Verifikasi',
+            'disetujui' => 'Disetujui',
+            'revisi' => 'Revisi Diperlukan',
+            'ditolak' => 'Ditolak',
+            'selesai' => 'Selesai',
+        ];
+        $statusLabel = $statusLabels[$request->status] ?? $request->status;
+
+        $admins = User::admins()->where('id', '!=', auth()->id())->get();
+        foreach ($admins as $admin) {
+            Notifikasi::notify(
+                $admin->id,
+                'Status Pendaftaran Diperbarui',
+                "Pendaftaran {$pendaftaran->kode_pendaftaran} ({$pendaftaran->nama_pria} & {$pendaftaran->nama_wanita}) diubah ke {$statusLabel}",
+                [
+                    'tipe' => 'pendaftaran',
+                    'link' => "/admin/nikah/{$pendaftaran->id}",
+                    'data' => ['pendaftaran_id' => $pendaftaran->id, 'old_status' => $oldStatus, 'new_status' => $request->status],
+                ]
+            );
+        }
 
         return $this->successResponse([
             'id' => $pendaftaran->id,
@@ -186,6 +208,33 @@ class PendaftaranNikahController extends BaseController
             $pendaftaran->update(['tanggal_nikah' => $request->tanggal]);
         }
 
+        // Notify penghulu if assigned
+        if ($pendaftaran->penghulu_id) {
+            Notifikasi::notify(
+                $pendaftaran->penghulu_id,
+                'Jadwal Nikah Dibuat',
+                "Jadwal nikah untuk {$pendaftaran->nama_pria} & {$pendaftaran->nama_wanita} telah dijadwalkan pada " . date('d M Y', strtotime($request->tanggal)) . " di {$request->lokasi}",
+                [
+                    'tipe' => 'pendaftaran',
+                    'link' => "/admin/nikah/{$pendaftaran->id}",
+                ]
+            );
+        }
+
+        // Notify admins
+        $admins = User::admins()->where('id', '!=', auth()->id())->get();
+        foreach ($admins as $admin) {
+            Notifikasi::notify(
+                $admin->id,
+                'Jadwal Nikah Dibuat',
+                "Jadwal untuk pendaftaran {$pendaftaran->kode_pendaftaran} dibuat: " . date('d M Y', strtotime($request->tanggal)),
+                [
+                    'tipe' => 'pendaftaran',
+                    'link' => "/admin/nikah/{$pendaftaran->id}",
+                ]
+            );
+        }
+
         return $this->createdResponse($jadwal, 'Jadwal nikah berhasil dibuat');
     }
 
@@ -211,6 +260,25 @@ class PendaftaranNikahController extends BaseController
             'status' => $request->status,
             'catatan' => $request->catatan,
         ]);
+
+        // Notify admins about document verification (if not pending)
+        if ($request->status !== 'pending') {
+            $pendaftaran = PendaftaranNikah::find($id);
+            $statusLabel = $request->status === 'valid' ? 'Valid' : 'Invalid/Revisi';
+
+            $admins = User::admins()->where('id', '!=', auth()->id())->get();
+            foreach ($admins as $admin) {
+                Notifikasi::notify(
+                    $admin->id,
+                    'Dokumen Diverifikasi',
+                    "Dokumen {$dokumen->jenis_label} untuk {$pendaftaran->kode_pendaftaran} ditandai {$statusLabel}",
+                    [
+                        'tipe' => 'dokumen',
+                        'link' => "/admin/nikah/{$id}",
+                    ]
+                );
+            }
+        }
 
         return $this->successResponse($dokumen, 'Status dokumen diperbarui');
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notifikasi;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -23,8 +24,8 @@ class UserController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('username', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('username', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -81,6 +82,17 @@ class UserController extends Controller
         if ($role) {
             $user->roles()->attach($role->id);
         }
+
+        // Send welcome notification to new user
+        Notifikasi::notify(
+            $user->id,
+            'Selamat Datang!',
+            "Akun Anda telah dibuat dengan role {$validated['role']}. Selamat bergabung di Sistem KUA Sembawa!",
+            [
+                'tipe' => 'info',
+                'link' => '/admin',
+            ]
+        );
 
         return response()->json([
             'success' => true,
@@ -142,10 +154,24 @@ class UserController extends Controller
         $user->update($updateData);
 
         // Update role if provided
+        $oldRoles = $user->roles->pluck('name')->toArray();
         if (isset($validated['role'])) {
             $role = Role::where('name', $validated['role'])->first();
             if ($role) {
                 $user->roles()->sync([$role->id]);
+
+                // Notify user about role change if different
+                if (!in_array($validated['role'], $oldRoles)) {
+                    Notifikasi::notify(
+                        $user->id,
+                        'Role Diperbarui',
+                        "Role Anda telah diubah menjadi {$validated['role']}.",
+                        [
+                            'tipe' => 'info',
+                            'link' => '/admin',
+                        ]
+                    );
+                }
             }
         }
 
@@ -190,7 +216,7 @@ class UserController extends Controller
     public function roles()
     {
         $roles = Role::select('id', 'name', 'description')->get();
-        
+
         return response()->json([
             'success' => true,
             'data' => $roles

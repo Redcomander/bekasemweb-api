@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Antrian;
+use App\Models\Notifikasi;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class AntrianController extends BaseController
@@ -22,6 +24,20 @@ class AntrianController extends BaseController
         $validated['tanggal'] = now()->toDateString();
 
         $antrian = Antrian::create($validated);
+
+        // Notify all admins about new queue
+        $admins = User::admins()->get();
+        foreach ($admins as $admin) {
+            Notifikasi::notify(
+                $admin->id,
+                'Antrian Baru',
+                "Antrian baru: {$antrian->kode_antrian} - {$antrian->layanan_label} ({$validated['nama']})",
+                [
+                    'tipe' => 'antrian',
+                    'link' => '/admin/antrian',
+                ]
+            );
+        }
 
         return $this->createdResponse([
             'kode_antrian' => $antrian->kode_antrian,

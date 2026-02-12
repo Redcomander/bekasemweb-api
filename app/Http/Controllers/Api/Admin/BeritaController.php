@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Api\BaseController;
 use App\Models\Berita;
+use App\Models\Notifikasi;
+use App\Models\User;
 use App\Services\ImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -35,7 +37,7 @@ class BeritaController extends BaseController
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('judul', 'like', "%{$search}%")
-                  ->orWhere('isi', 'like', "%{$search}%");
+                    ->orWhere('isi', 'like', "%{$search}%");
             });
         }
 
@@ -88,6 +90,22 @@ class BeritaController extends BaseController
         $berita = Berita::create($validated);
 
         \Log::info('Created berita:', $berita->toArray());
+
+        // Notify admins when berita is published
+        if (($validated['status'] ?? 'draft') === 'published') {
+            $admins = User::admins()->where('id', '!=', auth()->id())->get();
+            foreach ($admins as $admin) {
+                Notifikasi::notify(
+                    $admin->id,
+                    'Berita Baru Dipublikasikan',
+                    "Berita baru: \"{$berita->judul}\" telah dipublikasikan oleh " . $request->user()->name,
+                    [
+                        'tipe' => 'info',
+                        'link' => "/admin/berita/{$berita->id}",
+                    ]
+                );
+            }
+        }
 
         return $this->createdResponse($berita, 'Berita berhasil dibuat');
     }
@@ -163,7 +181,7 @@ class BeritaController extends BaseController
 
         // Reload from database
         $updated = Berita::find($berita->id);
-        
+
         if (!$updated) {
             \Log::error('Failed to find berita after update', ['id' => $berita->id]);
             return $this->errorResponse('Failed to reload berita after update', 500);

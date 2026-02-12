@@ -134,6 +134,16 @@ class User extends Authenticatable
         return $this->hasRole('penghulu');
     }
 
+    /**
+     * Scope: Get all admin users (super_admin, admin_kua)
+     */
+    public function scopeAdmins($query)
+    {
+        return $query->whereHas('roles', function ($q) {
+            $q->whereIn('name', ['super_admin', 'admin_kua']);
+        });
+    }
+
     // ==========================================
     // NOTIFICATION HELPERS
     // ==========================================

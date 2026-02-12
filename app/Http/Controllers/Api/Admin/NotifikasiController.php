@@ -23,6 +23,19 @@ class NotifikasiController extends BaseController
 
         $notifikasis = $query->paginate($request->per_page ?? 15);
 
+        // Transform to match frontend expectations
+        $notifikasis->getCollection()->transform(function ($notif) {
+            return [
+                'id' => $notif->id,
+                'title' => $notif->judul,
+                'message' => $notif->pesan,
+                'type' => $notif->tipe,
+                'link' => $notif->link,
+                'read' => $notif->is_read,
+                'created_at' => $notif->created_at->toISOString(),
+            ];
+        });
+
         return $this->paginatedResponse($notifikasis, 'Daftar notifikasi');
     }
 
