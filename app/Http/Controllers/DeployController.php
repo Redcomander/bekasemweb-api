@@ -17,24 +17,19 @@ class DeployController extends Controller
             ]);
         }
 
-        $repoPath = '/home/ibnuhafi/repositories/api.yazidtest.my.id';
-        $deployPath = '/home/ibnuhafi/api.yazidtest.my.id';
+        $repoPath = '/home/ibnuhafi/api.yazidtest.my.id';
         $timestamp = now()->toDateTimeString();
         $output = [];
         $output[] = "=== Deploy started at {$timestamp} ===";
 
         // Commands to run
         $commands = [
-            // Pull latest code in repo directory
             "cd {$repoPath} && git pull origin main 2>&1",
-            // Copy files to deploy directory
-            "/bin/cp -R {$repoPath}/. {$deployPath}/ 2>&1",
-            // Run commands in deploy directory
-            "cd {$deployPath} && /usr/local/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction 2>&1",
-            "cd {$deployPath} && /usr/local/bin/php artisan migrate --force 2>&1",
-            "cd {$deployPath} && /usr/local/bin/php artisan config:cache 2>&1",
-            "cd {$deployPath} && /usr/local/bin/php artisan route:cache 2>&1",
-            "cd {$deployPath} && /usr/local/bin/php artisan view:cache 2>&1",
+            "cd {$repoPath} && /usr/local/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction 2>&1",
+            "cd {$repoPath} && /usr/local/bin/php artisan migrate --force 2>&1",
+            "cd {$repoPath} && /usr/local/bin/php artisan config:cache 2>&1",
+            "cd {$repoPath} && /usr/local/bin/php artisan route:cache 2>&1",
+            "cd {$repoPath} && /usr/local/bin/php artisan view:cache 2>&1",
         ];
 
         foreach ($commands as $cmd) {
