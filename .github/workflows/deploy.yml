@@ -68,7 +68,7 @@ jobs:
         run: php artisan test
 
   # ==========================================
-  # DEPLOY JOB - Deploy to cPanel via FTP
+  # DEPLOY JOB - Trigger cPanel deploy via webhook
   # ==========================================
   deploy:
     needs: test
@@ -76,34 +76,22 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy to cPanel via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          port: ${{ secrets.FTP_PORT || 21 }}
-          server-dir: /api.yazidtest.my.id/
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/vendor/**
-            **/.env
-            **/storage/logs/**
-            **/storage/framework/cache/**
-            **/storage/framework/sessions/**
-            **/storage/framework/views/**
-            **/.github/**
-            **/tests/**
-
-      - name: Trigger Post-Deploy Webhook
+      - name: Trigger Deploy Webhook
         run: |
-          echo "🔄 Triggering post-deploy commands on server..."
-          curl -s -X POST \
+          echo "🚀 Triggering deployment on server..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
             -H "Content-Type: application/json" \
             -d '{"ref":"refs/heads/main"}' \
-            https://api.yazidtest.my.id/webhook-deploy.php || true
-          echo "✅ Deploy pipeline completed!"
+            https://api.yazidtest.my.id/webhook-deploy.php)
+
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -1)
+
+          echo "Response: $body"
+          echo "HTTP Code: $http_code"
+
+          if [ "$http_code" -ne 200 ]; then
+            echo "❌ Deployment failed!"
+            exit 1
+          fi
+          echo "✅ Deployment completed!"
