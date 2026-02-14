@@ -1,4 +1,4 @@
-name: Deploy BEKASEMWEB Backend to cPanel
+name: Test & Deploy BEKASEMWEB Backend
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   # ==========================================
-  # TEST JOB - Run tests before deployment
+  # TEST JOB - Run tests on every push/PR
   # ==========================================
   test:
     runs-on: ubuntu-latest
@@ -68,30 +68,43 @@ jobs:
         run: php artisan test
 
   # ==========================================
-  # DEPLOY JOB - Trigger cPanel deploy via webhook
+  # DEPLOY JOB - Auto deploy after tests pass
+  # Only runs on push to main (not on PRs)
   # ==========================================
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: Trigger Deploy Webhook
-        run: |
-          echo "🚀 Triggering deployment on server..."
-          response=$(curl -s -w "\n%{http_code}" -X POST \
-            -H "Content-Type: application/json" \
-            -d '{"ref":"refs/heads/main"}' \
-            https://api.yazidtest.my.id/deploy-webhook)
+      - name: Deploy to cPanel via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            echo "🚀 Starting deployment..."
+            cd /home/ibnuhafi/api.yazidtest.my.id
 
-          http_code=$(echo "$response" | tail -1)
-          body=$(echo "$response" | head -n -1)
+            echo "📥 Pulling latest changes..."
+            git pull origin main
 
-          echo "Response: $body"
-          echo "HTTP Code: $http_code"
+            echo "📦 Installing dependencies..."
+            composer install --no-dev --optimize-autoloader --no-interaction
 
-          if [ "$http_code" -ne 200 ]; then
-            echo "❌ Deployment failed!"
-            exit 1
-          fi
-          echo "✅ Deployment completed!"
+            echo "🔄 Running migrations..."
+            php artisan migrate --force
+
+            echo "⚡ Optimizing application..."
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan storage:link
+
+            echo "🔐 Setting permissions..."
+            chmod -R 755 storage bootstrap/cache
+            chmod -R 775 storage/logs
+
+            echo "✅ Deployment completed!"
