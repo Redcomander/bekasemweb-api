@@ -20,6 +20,16 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
+<<<<<<< HEAD
+        'http://localhost:5173', 
+        'http://localhost:5174', 
+        'http://localhost:3000', 
+        'http://127.0.0.1:5173', 
+        'http://127.0.0.1:5174',
+        'https://yazidtest.my.id', // Added inside the array
+    ],
+    
+=======
         'http://localhost:5173',
         'http://localhost:5174',
         'http://localhost:3000',
@@ -31,6 +41,7 @@ return [
         'http://www.yazidtest.my.id',
     ],
 
+>>>>>>> c821d0f9ce6aef283b6402d7687a51f5fd8b56ae
     'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],
