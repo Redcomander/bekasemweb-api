@@ -78,15 +78,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: "8.4"
-          extensions: mbstring, mysql, xml, bcmath
-
-      - name: Install Composer Dependencies (Production)
-        run: composer install --no-dev --optimize-autoloader --no-interaction
-
       - name: Deploy to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -99,6 +90,7 @@ jobs:
             **/.git*
             **/.git*/**
             **/node_modules/**
+            **/vendor/**
             **/.env
             **/storage/logs/**
             **/storage/framework/cache/**
@@ -119,6 +111,7 @@ jobs:
           port: 22
           script: |
             cd ~/api.yazidtest.my.id
+            composer install --no-dev --optimize-autoloader --no-interaction
             php artisan migrate --force
             php artisan config:cache
             php artisan route:cache
