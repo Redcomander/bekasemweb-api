@@ -1,16 +1,10 @@
 #!/bin/bash
 #
-# BEKASEMWEB - CPanel Git Deployment Script
-# ==========================================
-# 
-# This script is designed for CPanel's Git Version Control deployment.
-# Place this script at the root of your repository.
+# BEKASEMWEB - CPanel Deployment Script
+# ======================================
 #
-# Setup Instructions:
-# 1. In CPanel, go to Git Version Control
-# 2. Create repository with clone URL from GitHub
-# 3. Set document root to: public_html/api (or your preferred path)
-# 4. In .cpanel.yml, reference this script
+# This script handles backend deployment on cPanel.
+# Update DEPLOY_DIR to match your cPanel subdomain path.
 #
 
 # Exit on any error
@@ -19,16 +13,31 @@ set -e
 echo "🚀 Starting BEKASEMWEB Backend Deployment..."
 
 # Navigate to deployment directory
-DEPLOY_DIR="/home/username/public_html/api"
+# UPDATE THIS: Replace 'username' with your actual cPanel username
+DEPLOY_DIR="/home/username/api.yazidtest.my.id"
 cd $DEPLOY_DIR
+
+# Copy production env if .env doesn't exist
+if [ ! -f .env ]; then
+    echo "📋 Setting up .env from .env.production..."
+    cp .env.production .env
+    echo "⚠️  Remember to update DB credentials in .env!"
+fi
 
 # Install composer dependencies (production)
 echo "📦 Installing Composer dependencies..."
 composer install --no-dev --optimize-autoloader --no-interaction
 
+# Generate app key if not set
+php artisan key:generate --force
+
 # Run migrations
 echo "🔄 Running database migrations..."
 php artisan migrate --force
+
+# Create storage symlink
+echo "🔗 Creating storage symlink..."
+php artisan storage:link --force
 
 # Clear and optimize
 echo "⚡ Optimizing application..."
@@ -40,5 +49,6 @@ php artisan view:cache
 echo "🔐 Setting permissions..."
 chmod -R 755 storage bootstrap/cache
 chmod -R 775 storage/logs
+chmod -R 775 storage/app/public
 
 echo "✅ Deployment completed successfully!"
