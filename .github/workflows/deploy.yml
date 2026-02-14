@@ -98,3 +98,12 @@ jobs:
             **/storage/framework/views/**
             **/.github/**
             **/tests/**
+
+      - name: Trigger Post-Deploy Webhook
+        run: |
+          echo "🔄 Triggering post-deploy commands on server..."
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"ref":"refs/heads/main"}' \
+            https://api.yazidtest.my.id/webhook-deploy.php || true
+          echo "✅ Deploy pipeline completed!"
