@@ -68,12 +68,12 @@ if (empty($availableFunctions)) {
 // Build the deployment script
 $script = "cd {$deployDir} && " .
     "git pull origin main 2>&1 && " .
-    "composer install --no-dev --optimize-autoloader --no-interaction 2>&1 && " .
-    "php artisan migrate --force 2>&1 && " .
-    "php artisan config:cache 2>&1 && " .
-    "php artisan route:cache 2>&1 && " .
-    "php artisan view:cache 2>&1 && " .
-    "php artisan storage:link 2>&1 && " .
+    "/usr/local/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction 2>&1 && " .
+    "/usr/local/bin/php artisan migrate --force 2>&1 && " .
+    "/usr/local/bin/php artisan config:cache 2>&1 && " .
+    "/usr/local/bin/php artisan route:cache 2>&1 && " .
+    "/usr/local/bin/php artisan view:cache 2>&1 && " .
+    "/usr/local/bin/php artisan storage:link 2>&1 && " .
     "chmod -R 755 storage bootstrap/cache 2>&1 && " .
     "chmod -R 775 storage/logs 2>&1";
 
