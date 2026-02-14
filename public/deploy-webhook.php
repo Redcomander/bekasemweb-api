@@ -68,7 +68,7 @@ if (empty($availableFunctions)) {
 // Build the deployment script
 $script = "cd {$deployDir} && " .
     "git pull origin main 2>&1 && " .
-    "/usr/local/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction 2>&1 && " .
+    "/usr/local/bin/php /home/ibnuhafi/composer.phar install --no-dev --optimize-autoloader --no-interaction 2>&1 && " .
     "/usr/local/bin/php artisan migrate --force 2>&1 && " .
     "/usr/local/bin/php artisan config:cache 2>&1 && " .
     "/usr/local/bin/php artisan route:cache 2>&1 && " .
