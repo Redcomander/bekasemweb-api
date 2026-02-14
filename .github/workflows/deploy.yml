@@ -82,7 +82,7 @@ jobs:
           response=$(curl -s -w "\n%{http_code}" -X POST \
             -H "Content-Type: application/json" \
             -d '{"ref":"refs/heads/main"}' \
-            https://api.yazidtest.my.id/webhook-deploy.php)
+            https://api.yazidtest.my.id/deploy-webhook)
 
           http_code=$(echo "$response" | tail -1)
           body=$(echo "$response" | head -n -1)
