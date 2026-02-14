@@ -66,7 +66,8 @@ if (empty($availableFunctions)) {
 }
 
 // Build the deployment script
-$script = "cd {$deployDir} && " .
+$script = "export HOME=/home/ibnuhafi && " .
+    "cd {$deployDir} && " .
     "git pull origin main 2>&1 && " .
     "/usr/local/bin/php /home/ibnuhafi/composer.phar install --no-dev --optimize-autoloader --no-interaction 2>&1 && " .
     "/usr/local/bin/php artisan migrate --force 2>&1 && " .
